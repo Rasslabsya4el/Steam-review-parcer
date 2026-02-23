@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Virtual envs
+.venv/
+venv/
+env/
+
+# Local IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime logs / temp files
+*.log
+tmp*.log
+*.tmp
+
+# Generated local datasets (keep folder, ignore contents)
+datasets/*
+!datasets/.gitkeep
+
+# Generated CLI outputs / experiments
+keyword_matches*.json
+rpm_*results*.json
+steam_games_*.json
+steam_tags_en.csv
+steam_tags_en.json
+

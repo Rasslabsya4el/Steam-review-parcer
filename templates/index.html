@@ -1,0 +1,423 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Steam Crawl Control Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  </head>
+  <body data-api-base-url="{{ api_base_url }}">
+    <div class="ambient-shape shape-a"></div>
+    <div class="ambient-shape shape-b"></div>
+
+    <header class="topbar">
+      <div class="brand">
+        <p class="eyebrow">Steam Review Intelligence</p>
+        <h1>Crawl Builder</h1>
+      </div>
+      <div class="topbar-meta">
+        <span id="backendBadge" class="badge waiting">Checking backend...</span>
+        <code id="apiBase">{{ api_base_url }}</code>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="tab-switch card reveal">
+        <button id="tabCrawlBtn" type="button" class="tab-btn active">Crawler</button>
+        <button id="tabExploreBtn" type="button" class="tab-btn">Review Explorer</button>
+      </section>
+
+      <section id="tabCrawlPanel" class="tab-panel is-active">
+      <section class="layout-control card reveal">
+        <div class="layout-control__left">
+          <h2>Layout</h2>
+          <p>Pick how filter blocks should be positioned on the page.</p>
+        </div>
+        <div class="layout-control__right">
+          <button id="layoutSidebarBtn" class="choice-btn active" type="button">Sidebar Filters</button>
+          <button id="layoutTopBtn" class="choice-btn" type="button">Top Ribbon Filters</button>
+        </div>
+      </section>
+
+      <div id="mainLayout" class="layout-grid layout-grid--sidebar">
+        <aside class="filters-column card reveal">
+          <form id="crawlForm">
+            <details class="filter-group" open>
+              <summary>
+                <span>Tag Selection</span>
+                <small>Include/exclude in one list</small>
+              </summary>
+              <div class="filter-content">
+                <div id="selectedTagRules" class="chip-list"></div>
+                <div class="rule-controls">
+                  <label class="input-label" for="tagRuleSearch">Find tags</label>
+                  <input id="tagRuleSearch" class="search-input" type="text" placeholder="Action RPG, Souls-like, Racing...">
+                </div>
+                <div class="rule-panel">
+                  <div id="tagRuleOptions" class="rule-list"></div>
+                </div>
+                <p id="scopeEstimateHint" class="scope-estimate">Select include tags to see approximate result count.</p>
+              </div>
+            </details>
+
+            <details class="filter-group" open>
+              <summary>
+                <span>App Type Rules</span>
+                <small>Steam-style include/exclude in one list</small>
+              </summary>
+              <div class="filter-content">
+                <div id="selectedTypeRules" class="chip-list"></div>
+                <div class="rule-controls">
+                  <label class="input-label" for="typeRuleSearch">Find app types</label>
+                  <input id="typeRuleSearch" class="search-input" type="text" placeholder="Search app type...">
+                </div>
+                <div class="rule-panel">
+                  <div id="typeRuleOptions" class="rule-list"></div>
+                </div>
+              </div>
+            </details>
+
+            <details class="filter-group" open>
+              <summary>
+                <span>Core Crawl Setup</span>
+                <small>Main crawl settings</small>
+              </summary>
+              <div class="filter-content fields-grid">
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">Dataset folder</span>
+                    <span class="help-tip" data-tip="Dataset name. By default it is stored under the project 'datasets/' folder (for example: datasets/steam_dataset).">?</span>
+                  </span>
+                  <input id="datasetDir" type="text" value="steam_dataset" placeholder="steam_dataset">
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">Target games to crawl</span>
+                    <span class="help-tip" data-tip="Maximum number of matched apps to process. If fewer apps exist for selected filters, crawl ends earlier without errors.">?</span>
+                  </span>
+                  <input id="maxGames" type="number" min="1" value="300">
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">Review API source</span>
+                    <span class="help-tip" data-tip="Source used to load reviews. Steam Store AppReviews is recommended for speed and stability. Community source is fallback.">?</span>
+                  </span>
+                  <select id="reviewSource"></select>
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">Max review pages per app</span>
+                    <span class="help-tip" data-tip="Limits review depth for each app. 1 is quick smoke test. Larger value fetches more reviews. Empty means full available history.">?</span>
+                  </span>
+                  <input id="maxReviewPages" type="number" min="1" value="1">
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">Steam search page size</span>
+                    <span class="help-tip" data-tip="How many apps Steam search returns per page (1-100). Larger values reduce page requests but can be less stable on bad network.">?</span>
+                  </span>
+                  <input id="searchPageSize" type="number" min="1" max="100" value="50">
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">AppReviews batch size</span>
+                    <span class="help-tip" data-tip="How many reviews to request per AppReviews request (1-100). 100 is usually best for throughput.">?</span>
+                  </span>
+                  <input id="appreviewsPageSize" type="number" min="1" max="100" value="100">
+                </label>
+              </div>
+            </details>
+
+            <details class="filter-group">
+              <summary>
+                <span>Performance + Retry</span>
+                <small>Workers, RPM, retry policy</small>
+              </summary>
+              <div class="filter-content fields-grid">
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">Parallel workers</span>
+                    <span class="help-tip" data-tip="How many apps are processed in parallel. Higher is faster but increases request pressure.">?</span>
+                  </span>
+                  <input id="workers" type="number" min="1" max="64" value="12">
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">Request rate limit (RPM)</span>
+                    <span class="help-tip" data-tip="Global requests-per-minute limit across all workers. Lower value is safer, higher value is faster but riskier.">?</span>
+                  </span>
+                  <input id="maxRpm" type="number" min="0" value="800">
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">HTTP retry attempts</span>
+                    <span class="help-tip" data-tip="How many times to retry transient HTTP failures (429/500/502/503/504).">?</span>
+                  </span>
+                  <input id="httpRetries" type="number" min="1" value="6">
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">Per-app retry attempts</span>
+                    <span class="help-tip" data-tip="How many retry cycles are allowed per app when review fetch fails.">?</span>
+                  </span>
+                  <input id="maxAppRetries" type="number" min="1" value="4">
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">Delay between search pages (sec)</span>
+                    <span class="help-tip" data-tip="Extra pause between Steam search page requests. Increase if you see frequent throttling during search stage.">?</span>
+                  </span>
+                  <input id="sleepSearch" type="number" min="0" step="0.05" value="0.1">
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">Delay between review pages (sec)</span>
+                    <span class="help-tip" data-tip="Extra pause between review-page requests. Increase for safer long runs.">?</span>
+                  </span>
+                  <input id="sleepReviews" type="number" min="0" step="0.05" value="0.25">
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">Retry backoff base (sec)</span>
+                    <span class="help-tip" data-tip="Base wait for retry backoff. Real retry delay grows exponentially from this value.">?</span>
+                  </span>
+                  <input id="retryBaseSleep" type="number" min="0" step="0.1" value="1.0">
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">Retry random jitter (sec)</span>
+                    <span class="help-tip" data-tip="Random extra wait added to retries to avoid burst collisions.">?</span>
+                  </span>
+                  <input id="retryJitter" type="number" min="0" step="0.1" value="0.6">
+                </label>
+                <label>
+                  <span class="label-row">
+                    <span class="input-label">HTTP timeout (sec)</span>
+                    <span class="help-tip" data-tip="Maximum waiting time for one HTTP request before timeout.">?</span>
+                  </span>
+                  <input id="timeout" type="number" min="5" max="300" value="30">
+                </label>
+              </div>
+            </details>
+
+            <details class="filter-group">
+              <summary>
+                <span>Flags</span>
+                <small>Boolean toggles</small>
+              </summary>
+              <div class="filter-content toggles-grid">
+                <label class="toggle">
+                  <input id="resume" type="checkbox" checked>
+                  <span class="toggle-text">Resume from existing files</span>
+                  <span class="help-tip help-tip--inline" data-tip="When enabled, already completed apps are skipped and crawl continues from where it stopped.">?</span>
+                </label>
+                <label class="toggle">
+                  <input id="enrichAppdetails" type="checkbox" checked>
+                  <span class="toggle-text">Save compact app details</span>
+                  <span class="help-tip help-tip--inline" data-tip="Save compact normalized app details for easier filtering in your frontend and API.">?</span>
+                </label>
+                <label class="toggle">
+                  <input id="storeRawAppdetails" type="checkbox" checked>
+                  <span class="toggle-text">Save raw appdetails JSON</span>
+                  <span class="help-tip help-tip--inline" data-tip="Store full raw appdetails responses. Useful for debugging and extracting additional fields later.">?</span>
+                </label>
+                <label class="toggle">
+                  <input id="excludeComingSoon" type="checkbox" checked>
+                  <span class="toggle-text">Skip Coming soon apps</span>
+                  <span class="help-tip help-tip--inline" data-tip="Exclude unreleased products where Steam release date is marked as Coming soon.">?</span>
+                </label>
+              </div>
+            </details>
+
+            <div class="form-actions">
+              <button id="startCrawlBtn" type="submit" class="btn-primary">Start Crawl Job</button>
+              <button id="resetFormBtn" type="button" class="btn-secondary">Reset Defaults</button>
+            </div>
+          </form>
+        </aside>
+
+        <section class="content-column">
+          <article class="card reveal">
+            <header class="card-header">
+              <h2>Current Job</h2>
+              <p>Status of the latest crawl request.</p>
+            </header>
+            <div class="job-grid">
+              <div>
+                <p class="label">Job ID</p>
+                <p id="jobIdValue">-</p>
+              </div>
+              <div>
+                <p class="label">Status</p>
+                <p id="jobStatusValue">idle</p>
+              </div>
+              <div>
+                <p class="label">Progress</p>
+                <p id="jobProgressValue">0%</p>
+              </div>
+            </div>
+            <div class="progress">
+              <div id="jobProgressFill" class="progress-fill"></div>
+            </div>
+            <p id="jobMessage" class="muted">No job started yet.</p>
+            <div class="inline-actions">
+              <button id="refreshJobsBtn" type="button" class="btn-secondary">Refresh Jobs</button>
+              <button id="cancelJobBtn" type="button" class="btn-secondary" disabled>Stop Crawl</button>
+            </div>
+          </article>
+
+          <article class="card reveal">
+            <header class="card-header">
+              <h2>Latest Jobs</h2>
+              <p>Quick snapshot from backend queue.</p>
+            </header>
+            <div id="jobsList" class="jobs-list"></div>
+          </article>
+
+        </section>
+      </div>
+      </section>
+
+      <section id="tabExplorePanel" class="tab-panel">
+        <div class="layout-grid layout-grid--sidebar">
+          <aside class="filters-column card reveal">
+            <form id="exploreForm">
+              <details class="filter-group" open>
+                <summary>
+                  <span>Dataset + Keywords</span>
+                  <small>Choose parsed data and terms</small>
+                </summary>
+                <div class="filter-content">
+                  <label>
+                    <span class="label-row">
+                      <span class="input-label">Dataset</span>
+                      <span class="help-tip" data-tip="Choose a dataset folder produced by crawl jobs. Explorer will scan games and reviews from this dataset.">?</span>
+                    </span>
+                    <select id="exploreDatasetSelect"></select>
+                  </label>
+                  <div class="inline-actions">
+                    <button id="exploreRefreshDatasetsBtn" type="button" class="btn-secondary">Refresh datasets</button>
+                    <button id="exploreRefreshSchemaBtn" type="button" class="btn-secondary">Reload schema</button>
+                  </div>
+
+                  <label>
+                    <span class="label-row">
+                      <span class="input-label">Include keywords</span>
+                      <span class="help-tip" data-tip="Reviews must include these terms. Use Enter or comma to add multiple keywords.">?</span>
+                    </span>
+                    <input id="exploreIncludeKwInput" class="search-input" type="text" placeholder="poe, path of exile, d4...">
+                  </label>
+                  <div id="exploreIncludeKwChips" class="chip-list"></div>
+
+                  <label>
+                    <span class="label-row">
+                      <span class="input-label">Exclude keywords</span>
+                      <span class="help-tip" data-tip="Drop reviews containing these terms (for noise removal).">?</span>
+                    </span>
+                    <input id="exploreExcludeKwInput" class="search-input" type="text" placeholder="mobile, controller only...">
+                  </label>
+                  <div id="exploreExcludeKwChips" class="chip-list"></div>
+
+                  <div class="fields-grid">
+                    <label>
+                      <span class="label-row">
+                        <span class="input-label">Keyword mode</span>
+                        <span class="help-tip" data-tip="ANY: at least one include keyword. ALL: every include keyword must appear.">?</span>
+                      </span>
+                      <select id="exploreKeywordMode">
+                        <option value="any">ANY</option>
+                        <option value="all">ALL</option>
+                      </select>
+                    </label>
+                    <label class="toggle">
+                      <input id="exploreCaseSensitive" type="checkbox">
+                      <span class="toggle-text">Case-sensitive keywords</span>
+                    </label>
+                  </div>
+
+                  <div class="fields-grid">
+                    <label>
+                      <span class="label-row">
+                        <span class="input-label">Min matched reviews / game</span>
+                        <span class="help-tip" data-tip="Hide games with fewer matched reviews than this threshold.">?</span>
+                      </span>
+                      <input id="exploreMinMatchedReviews" type="number" min="1" value="1">
+                    </label>
+                    <label>
+                      <span class="label-row">
+                        <span class="input-label">Games per page</span>
+                        <span class="help-tip" data-tip="How many matched games to show in the result list.">?</span>
+                      </span>
+                      <input id="exploreLimit" type="number" min="1" max="500" value="100">
+                    </label>
+                  </div>
+                </div>
+              </details>
+
+              <details class="filter-group" open>
+                <summary>
+                  <span>Game Filters</span>
+                  <small>Choose game fields and conditions</small>
+                </summary>
+                <div class="filter-content">
+                  <div class="inline-actions filter-actions">
+                    <button id="exploreAddGameFilterBtn" type="button" class="btn-secondary">Add game filter</button>
+                  </div>
+                  <div id="exploreGameFilters" class="dynamic-filter-list"></div>
+                </div>
+              </details>
+
+              <details class="filter-group" open>
+                <summary>
+                  <span>Review Filters</span>
+                  <small>Choose review fields and conditions</small>
+                </summary>
+                <div class="filter-content">
+                  <div class="inline-actions filter-actions">
+                    <button id="exploreAddReviewFilterBtn" type="button" class="btn-secondary">Add review filter</button>
+                  </div>
+                  <div id="exploreReviewFilters" class="dynamic-filter-list"></div>
+                </div>
+              </details>
+
+              <div class="form-actions">
+                <button id="exploreRunBtn" type="submit" class="btn-primary">Run Review Search</button>
+              </div>
+            </form>
+          </aside>
+
+          <section class="content-column content-column--explore">
+            <div class="explore-split">
+              <article class="card reveal explore-card-compact">
+                <header class="card-header">
+                  <h2>Matched Games</h2>
+                  <p>Compact list of games where reviews matched your filters.</p>
+                </header>
+                <p id="exploreStatus" class="muted explore-status-inline">Select dataset and run query.</p>
+                <div id="exploreSummary" class="muted">No query yet.</div>
+                <div id="exploreSortBar" class="explore-sortbar"></div>
+                <div id="exploreResults" class="explore-results"></div>
+              </article>
+
+              <article class="card reveal explore-selected-card">
+                <header class="card-header">
+                  <h2>Selected Game</h2>
+                  <p>Game details + matched reviews with highlighted keywords.</p>
+                </header>
+                <div id="exploreGameMeta" class="explore-game-meta"></div>
+                <div id="exploreReviewsList" class="explore-reviews-list"></div>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script defer src="{{ url_for('static', filename='app.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='explore.js') }}"></script>
+  </body>
+</html>
+
