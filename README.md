@@ -365,7 +365,3 @@ This affects schema generation only. Review search queries still scan dataset re
 - export/import presets for crawler and explorer filter configurations
 - richer analytics views (charts, trend summaries, cross-keyword comparisons)
 - optional auth/multi-user mode for shared deployments
-
-## License
-
-No license file is included. Add one before publishing publicly.
